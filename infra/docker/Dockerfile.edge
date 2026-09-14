@@ -1,0 +1,33 @@
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY cmd/edge-service ./cmd/edge-service
+COPY pkg ./pkg
+
+# Build
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o edge-service ./cmd/edge-service
+
+# Runtime image
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates curl
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/edge-service .
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["./edge-service"]

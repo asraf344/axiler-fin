@@ -1,0 +1,43 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'fintech-platform'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  # Edge service metrics
+  - job_name: 'edge'
+    static_configs:
+      - targets: ['edge:8080']
+    metrics_path: '/metrics'
+
+  # Auth service metrics
+  - job_name: 'auth'
+    static_configs:
+      - targets: ['auth:8081']
+    metrics_path: '/metrics'
+
+  # Search service metrics
+  - job_name: 'search'
+    static_configs:
+      - targets: ['search:8082']
+    metrics_path: '/metrics'
+
+  # Transfer service metrics
+  - job_name: 'transfer'
+    static_configs:
+      - targets: ['transfer:8083']
+    metrics_path: '/metrics'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

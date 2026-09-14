@@ -1,0 +1,480 @@
+version: '3.9'
+
+services:
+  # Vault for secrets management
+  vault:
+    image: vault:latest
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "dev-token"
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    ports:
+      - target: 8200
+        published: 8200
+        protocol: tcp
+        mode: host
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - axiler-fin-overlay
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - prometheus_data:/prometheus
+    ports:
+      - target: 9090
+        published: 9090
+        protocol: tcp
+        mode: host
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+      - source: prometheus_alerts
+        target: /etc/prometheus/alert_rules.yml
+    networks:
+      - axiler-fin-overlay
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Elasticsearch for logs
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - target: 9200
+        published: 9200
+        protocol: tcp
+        mode: host
+    networks:
+      - axiler-fin-overlay
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # Kibana for log visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - target: 5601
+        published: 5601
+        protocol: tcp
+        mode: host
+    networks:
+      - axiler-fin-overlay
+    depends_on:
+      - elasticsearch
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - target: 6831
+        published: 6831
+        protocol: udp
+        mode: host
+      - target: 16686
+        published: 16686
+        protocol: tcp
+        mode: host
+    networks:
+      - axiler-fin-overlay
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD_FILE=/run/secrets/grafana_admin_password
+      - GF_SECURITY_ADMIN_USER=admin
+    secrets:
+      - grafana_admin_password
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - target: 3000
+        published: 3000
+        protocol: tcp
+        mode: host
+    configs:
+      - source: grafana_datasources
+        target: /etc/grafana/provisioning/datasources/datasources.yml
+    networks:
+      - axiler-fin-overlay
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # Security Edge (API Gateway) - 3 replicas
+  edge:
+    image: ${REGISTRY:-axiler-fin}/edge:${EDGE_VERSION:-latest}@${EDGE_DIGEST:-sha256:latest}
+    ports:
+      - target: 8080
+        published: 8080
+        protocol: tcp
+        mode: host
+    environment:
+      - PORT=8080
+      - LOG_LEVEL=info
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN_FILE=/run/secrets/vault_token
+    secrets:
+      - vault_token
+    networks:
+      - axiler-fin-overlay
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      placement:
+        constraints:
+          - node.labels.service == edge
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      service: edge
+      version: "${EDGE_VERSION:-latest}"
+
+  # Auth Service - 2 replicas
+  auth:
+    image: ${REGISTRY:-axiler-fin}/auth:${AUTH_VERSION:-latest}@${AUTH_DIGEST:-sha256:latest}
+    ports:
+      - target: 8081
+        published: 8081
+        protocol: tcp
+        mode: host
+    environment:
+      - PORT=8081
+      - LOG_LEVEL=info
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN_FILE=/run/secrets/vault_token
+    secrets:
+      - vault_token
+    networks:
+      - axiler-fin-overlay
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      placement:
+        constraints:
+          - node.labels.service == auth
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    labels:
+      service: auth
+      version: "${AUTH_VERSION:-latest}"
+
+  # Search Service - 3 replicas
+  search:
+    image: ${REGISTRY:-axiler-fin}/search:${SEARCH_VERSION:-latest}@${SEARCH_DIGEST:-sha256:latest}
+    ports:
+      - target: 8082
+        published: 8082
+        protocol: tcp
+        mode: host
+    environment:
+      - PORT=8082
+      - LOG_LEVEL=info
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN_FILE=/run/secrets/vault_token
+    secrets:
+      - vault_token
+    networks:
+      - axiler-fin-overlay
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      placement:
+        constraints:
+          - node.labels.service == search
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      service: search
+      version: "${SEARCH_VERSION:-latest}"
+
+  # Transfer Service - 3 replicas with strict resource constraints
+  transfer:
+    image: ${REGISTRY:-axiler-fin}/transfer:${TRANSFER_VERSION:-latest}@${TRANSFER_DIGEST:-sha256:latest}
+    ports:
+      - target: 8083
+        published: 8083
+        protocol: tcp
+        mode: host
+    environment:
+      - PORT=8083
+      - LOG_LEVEL=info
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN_FILE=/run/secrets/vault_token
+    secrets:
+      - vault_token
+    networks:
+      - axiler-fin-overlay
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        monitor: 30s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      placement:
+        constraints:
+          - node.labels.service == transfer
+          - node.labels.stability == high
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    labels:
+      service: transfer
+      version: "${TRANSFER_VERSION:-latest}"
+      criticality: high
+
+networks:
+  axiler-fin-overlay:
+    driver: overlay
+    driver_opts:
+      # Enable user-friendly aliases
+      com.docker.network.driver.overlay.vxlan_list: "4097"
+      # Service discovery mode
+      com.docker.network.driver.overlay.vxlan_udp_port: "4789"
+    ipam:
+      config:
+        - subnet: 10.0.9.0/24
+
+secrets:
+  vault_token:
+    external: true
+    # Created via: echo "dev-token" | docker secret create vault_token -
+  grafana_admin_password:
+    external: true
+    # Created via: echo "admin" | docker secret create grafana_admin_password -
+
+configs:
+  prometheus_config:
+    file: ./infra/monitoring/prometheus.yml
+  prometheus_alerts:
+    file: ./infra/monitoring/prometheus-swarm-alerts.yml
+  grafana_datasources:
+    file: ./infra/monitoring/grafana-datasources.yml
+
+volumes:
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  elasticsearch_data:
+    driver: local
+  grafana_data:
+    driver: local
