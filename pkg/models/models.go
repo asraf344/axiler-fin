@@ -111,52 +111,12 @@ type LedgerEntry struct {
 // NewSyntheticDatabase creates and initializes a synthetic database
 func NewSyntheticDatabase() *SyntheticDatabase {
 	db := &SyntheticDatabase{
-		Accounts:  make(map[string]*Account),
 		Transfers: make(map[string]*Transfer),
 		Ledger:    make([]*LedgerEntry, 0),
 	}
 
 	// Seed data for tenant Alpha
-	db.Accounts["acc_alpha_001"] = &Account{
-		ID:        "acc_alpha_001",
-		TenantID:  "alpha",
-		Owner:     "Alice Corp",
-		Balance:   50000.00,
-		Currency:  "USD",
-		Status:    "active",
-		CreatedAt: time.Now().Add(-24 * time.Hour),
-	}
-	db.Accounts["acc_alpha_002"] = &Account{
-		ID:        "acc_alpha_002",
-		TenantID:  "alpha",
-		Owner:     "Alice Savings",
-		Balance:   100000.00,
-		Currency:  "USD",
-		Status:    "active",
-		CreatedAt: time.Now().Add(-48 * time.Hour),
-	}
-
-	// Seed data for tenant Beta
-	db.Accounts["acc_beta_001"] = &Account{
-		ID:        "acc_beta_001",
-		TenantID:  "beta",
-		Owner:     "Bob Enterprise",
-		Balance:   250000.00,
-		Currency:  "USD",
-		Status:    "active",
-		CreatedAt: time.Now().Add(-72 * time.Hour),
-	}
-
-	// Seed data for tenant Gamma
-	db.Accounts["acc_gamma_001"] = &Account{
-		ID:        "acc_gamma_001",
-		TenantID:  "gamma",
-		Owner:     "Gamma Ventures",
-		Balance:   5000.00,
-		Currency:  "USD",
-		Status:    "active",
-		CreatedAt: time.Now(),
-	}
+	db.Accounts = generateAccounts(100)
 
 	return db
 }
