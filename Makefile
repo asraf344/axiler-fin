@@ -10,6 +10,13 @@ NC := \033[0m
 STACK_NAME ?= fintech
 ENV_FILE ?= .env.swarm
 
+GORELEASER_VERSION ?= 2.18.1
+TOOL_DIR ?= .tool
+GORELEASER="$(TOOL_DIR)/goreleaser"
+
+
+
+
 help:
 	@echo "$(BLUE)Fintech Platform - Docker Swarm Commands$(NC)"
 	@echo ""
@@ -70,6 +77,49 @@ fmt: ## Run go fmt against code.
 .PHONY: vet
 vet: fmt ## Run go vet against code.
 	go vet ./...
+
+
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_S),Darwin)
+	GOOS := Darwin
+else ifeq ($(UNAME_S),Linux)
+	GOOS := Linux
+else
+	$(error Unsupported OS: $(UNAME_S))
+endif
+
+ifeq ($(UNAME_M),x86_64)
+	GOARCH := x86_64
+else ifeq ($(UNAME_M),amd64)
+	GOARCH := x86_64
+else ifeq ($(UNAME_M),arm64)
+	GOARCH := arm64
+else ifeq ($(UNAME_M),aarch64)
+	GOARCH := arm64
+else
+	$(error Unsupported architecture: $(UNAME_M))
+endif
+
+GORELEASER_ARCHIVE := goreleaser_$(GOOS)_$(GOARCH).tar.gz
+GORELEASER_URL := https://github.com/goreleaser/goreleaser/releases/download/v$(GORELEASER_VERSION)/$(GORELEASER_ARCHIVE)
+## https://github.com/goreleaser/goreleaser/releases/download/v2.18.1/goreleaser_Darwin_arm64.tar.gz
+
+.PHONY: goreleaser
+goreleaser:
+	@mkdir -p $(TOOL_DIR)
+	@if [ ! -x "$(GORELEASER)" ]; then \
+		echo "Downloading GoReleaser $(GORELEASER_VERSION) for $(GOOS)/$(GOARCH)..."; \
+		curl -fsSL "$(GORELEASER_URL)" -o /tmp/$(GORELEASER_ARCHIVE); \
+		tar -xzf /tmp/$(GORELEASER_ARCHIVE) -C $(TOOL_DIR) goreleaser; \
+		rm /tmp/$(GORELEASER_ARCHIVE); \
+		chmod +x "$(GORELEASER)"; \
+	fi
+
+snapshot:
+	@echo "$(YELLOW)Building snapshot release...$(NC)"
+	@$(GORELEASER) release --clean --snapshot --skip=publish
 
 build-images:
 	@echo "$(YELLOW)Building Docker images...$(NC)"
