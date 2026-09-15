@@ -14,4 +14,4 @@ COPY --from=builder /build/auth-service .
 EXPOSE 8081
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
   CMD curl -f http://localhost:8081/health || exit 1
-CMD ["./auth-service"]
+CMD ["./app/auth-service"]

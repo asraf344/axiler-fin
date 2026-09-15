@@ -14,4 +14,4 @@ COPY --from=builder /build/search-service .
 EXPOSE 8082
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
   CMD curl -f http://localhost:8082/health || exit 1
-CMD ["./search-service"]
+CMD ["./app/search-service"]

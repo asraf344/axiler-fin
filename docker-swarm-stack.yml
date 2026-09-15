@@ -229,7 +229,7 @@ services:
 
   # Security Edge (API Gateway) - 3 replicas
   edge:
-    image: ${REGISTRY:-axiler-fin}/edge:${EDGE_VERSION:-latest}@${EDGE_DIGEST:-sha256:latest}
+    image: ${REGISTRY:-axiler-fin}/edge:${EDGE_VERSION:-latest}
     ports:
       - target: 8080
         published: 8080
@@ -282,7 +282,8 @@ services:
 
   # Auth Service - 2 replicas
   auth:
-    image: ${REGISTRY:-axiler-fin}/auth:${AUTH_VERSION:-latest}@${AUTH_DIGEST:-sha256:latest}
+    #image: ${REGISTRY:-axiler-fin}/auth:${AUTH_VERSION:-latest}@${AUTH_DIGEST:-sha256:latest}
+    image: ${REGISTRY:-axiler-fin}/auth:${AUTH_VERSION:-latest}
     ports:
       - target: 8081
         published: 8081
@@ -334,7 +335,7 @@ services:
 
   # Search Service - 3 replicas
   search:
-    image: ${REGISTRY:-axiler-fin}/search:${SEARCH_VERSION:-latest}@${SEARCH_DIGEST:-sha256:latest}
+    image: ${REGISTRY:-axiler-fin}/search:${SEARCH_VERSION:-latest}
     ports:
       - target: 8082
         published: 8082
@@ -386,7 +387,7 @@ services:
 
   # Transfer Service - 3 replicas with strict resource constraints
   transfer:
-    image: ${REGISTRY:-axiler-fin}/transfer:${TRANSFER_VERSION:-latest}@${TRANSFER_DIGEST:-sha256:latest}
+    image: ${REGISTRY:-axiler-fin}/transfer:${TRANSFER_VERSION:-latest}
     ports:
       - target: 8083
         published: 8083
