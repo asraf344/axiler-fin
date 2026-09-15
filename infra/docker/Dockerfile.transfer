@@ -14,4 +14,4 @@ COPY --from=builder /build/transfer-service .
 EXPOSE 8083
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
   CMD curl -f http://localhost:8083/health || exit 1
-CMD ["./app/transfer-service"]
+CMD ["./transfer-service"]

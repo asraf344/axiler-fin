@@ -42,12 +42,14 @@ if [ -f "$ENV_FILE" ]; then
     set +a
 fi
 
-# Default values if not set
-REGISTRY="${REGISTRY:-fintech}"
+# Default values if not set. Keep this aligned with build-images.sh and the
+# stack file so a single-node local Swarm can use images already on the node.
+REGISTRY="${REGISTRY:-axiler-fin}"
 EDGE_VERSION="${EDGE_VERSION:-latest}"
 AUTH_VERSION="${AUTH_VERSION:-latest}"
 SEARCH_VERSION="${SEARCH_VERSION:-latest}"
 TRANSFER_VERSION="${TRANSFER_VERSION:-latest}"
+RESOLVE_IMAGE="${RESOLVE_IMAGE:-never}"
 
 echo "Configuration:"
 echo "  Stack Name: $STACK_NAME"
@@ -56,6 +58,7 @@ echo "  Edge Version: $EDGE_VERSION"
 echo "  Auth Version: $AUTH_VERSION"
 echo "  Search Version: $SEARCH_VERSION"
 echo "  Transfer Version: $TRANSFER_VERSION"
+echo "  Resolve Images: $RESOLVE_IMAGE"
 echo ""
 
 # Validate that required secrets exist
@@ -85,6 +88,7 @@ echo -e "${BLUE}Deploying stack: $STACK_NAME${NC}"
 # Deploy or update the stack
 docker stack deploy \
     -c "$COMPOSE_FILE" \
+    --resolve-image "$RESOLVE_IMAGE" \
     --with-registry-auth \
     "$STACK_NAME"
 

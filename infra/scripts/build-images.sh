@@ -3,7 +3,7 @@
 set -e
 
 REGISTRY="${1:-axiler-fin}"
-VERSION="${2:-dev}"
+VERSION="${2:-latest}"
 
 echo "Building images for registry: $REGISTRY:$VERSION"
 echo ""

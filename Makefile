@@ -70,7 +70,12 @@ fmt: ## Run go fmt against code.
 .PHONY: vet
 vet: fmt ## Run go vet against code.
 	go vet ./...
-	
+
+build-images:
+	@echo "$(YELLOW)Building Docker images...$(NC)"
+	@chmod +x ./infra/scripts/build-images.sh
+	@./infra/scripts/build-images.sh
+
 swarm-init:
 	@echo "$(YELLOW)Initializing Docker Swarm cluster...$(NC)"
 	@chmod +x ./infra/scripts/swarm-init.sh

@@ -53,22 +53,6 @@ func init() {
 	}
 }
 
-// Credentials holds test credentials for demo tenants
-var credentials = map[string]map[string]string{
-	"alpha": {
-		"api_key": "alpha_key_123",
-		"secret":  "alpha_secret_456",
-	},
-	"beta": {
-		"api_key": "beta_key_789",
-		"secret":  "beta_secret_012",
-	},
-	"gamma": {
-		"api_key": "gamma_key_345",
-		"secret":  "gamma_secret_678",
-	},
-}
-
 func main() {
 	r := chi.NewRouter()
 

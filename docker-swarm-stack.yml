@@ -3,7 +3,7 @@ version: '3.9'
 services:
   # Vault for secrets management
   vault:
-    image: vault:latest
+    image: hashicorp/vault:1.20.4
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: "dev-token"
       VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
@@ -127,7 +127,7 @@ services:
 
   # Kibana for log visualization
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.10.0
+    image: kibana:9.5.3
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
@@ -227,7 +227,7 @@ services:
           cpus: '0.5'
           memory: 256M
 
-  # Security Edge (API Gateway) - 3 replicas
+  # Security Edge (API Gateway)
   edge:
     image: ${REGISTRY:-axiler-fin}/edge:${EDGE_VERSION:-latest}
     ports:
@@ -251,7 +251,7 @@ services:
       retries: 3
       start_period: 20s
     deploy:
-      replicas: 3
+      replicas: 1
       update_config:
         parallelism: 1
         delay: 10s
@@ -268,7 +268,7 @@ services:
         window: 120s
       placement:
         constraints:
-          - node.labels.service == edge
+          - node.role == manager
       resources:
         limits:
           cpus: '0.5'
@@ -280,7 +280,7 @@ services:
       service: edge
       version: "${EDGE_VERSION:-latest}"
 
-  # Auth Service - 2 replicas
+  # Auth Service
   auth:
     #image: ${REGISTRY:-axiler-fin}/auth:${AUTH_VERSION:-latest}@${AUTH_DIGEST:-sha256:latest}
     image: ${REGISTRY:-axiler-fin}/auth:${AUTH_VERSION:-latest}
@@ -305,7 +305,7 @@ services:
       retries: 3
       start_period: 20s
     deploy:
-      replicas: 2
+      replicas: 1
       update_config:
         parallelism: 1
         delay: 10s
@@ -321,7 +321,7 @@ services:
         window: 120s
       placement:
         constraints:
-          - node.labels.service == auth
+          - node.role == manager
       resources:
         limits:
           cpus: '0.5'
@@ -333,7 +333,7 @@ services:
       service: auth
       version: "${AUTH_VERSION:-latest}"
 
-  # Search Service - 3 replicas
+  # Search Service
   search:
     image: ${REGISTRY:-axiler-fin}/search:${SEARCH_VERSION:-latest}
     ports:
@@ -357,7 +357,7 @@ services:
       retries: 3
       start_period: 20s
     deploy:
-      replicas: 3
+      replicas: 1
       update_config:
         parallelism: 1
         delay: 10s
@@ -373,7 +373,7 @@ services:
         window: 120s
       placement:
         constraints:
-          - node.labels.service == search
+          - node.role == manager
       resources:
         limits:
           cpus: '0.5'
@@ -409,7 +409,7 @@ services:
       retries: 3
       start_period: 20s
     deploy:
-      replicas: 3
+      replicas: 1
       update_config:
         parallelism: 1
         delay: 15s
@@ -427,8 +427,7 @@ services:
         window: 120s
       placement:
         constraints:
-          - node.labels.service == transfer
-          - node.labels.stability == high
+          - node.role == manager
       resources:
         limits:
           cpus: '1'

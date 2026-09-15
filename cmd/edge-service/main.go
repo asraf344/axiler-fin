@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -36,7 +37,7 @@ func init() {
 	})
 	log.SetLevel(logrus.DebugLevel)
 
-	metricsReg := prometheus.NewRegistry()
+	metricsReg = prometheus.NewRegistry()
 	appMetrics = metrics.New(metricsReg)
 	limiter = ratelimit.New()
 
@@ -45,9 +46,9 @@ func init() {
 
 	// Backend service routing
 	backends = map[string]string{
-		"/auth":            "http://localhost:8081",
-		"/api/v1/search":   "http://localhost:8082",
-		"/api/v1/transfer": "http://localhost:8083",
+		"/auth":            "http://auth:8081",
+		"/api/v1/search":   "http://search:8082",
+		"/api/v1/transfer": "http://transfer:8083",
 	}
 }
 
@@ -207,7 +208,14 @@ func proxyRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create reverse proxy
-	proxy := httputil.NewSingleHostReverseProxy(nil)
+	target, err := url.Parse(backendURL)
+	if err != nil {
+		log.WithError(err).WithField("backend", backendURL).Error("Invalid backend URL")
+		w.WriteHeader(http.StatusBadGateway)
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid backend configuration"})
+		return
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.Director = func(req *http.Request) {
 		req.URL.Scheme = "http"
 		req.URL.Host = strings.TrimPrefix(backendURL, "http://")
