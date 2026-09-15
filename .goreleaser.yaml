@@ -1,0 +1,97 @@
+version: 2
+
+release:
+  # If set to auto, will mark the release as not ready for production in case there is an indicator for this in the
+  # tag e.g. v1.0.0-rc1 .If set to true, will mark the release as not ready for production.
+  prerelease: true
+
+  # If set to true, will not auto-publish the release. This is done to allow us to review the changelog before publishing.
+  draft: false
+
+project_name: axiler-fin
+
+
+env:
+  # required to support multi architecture docker builds
+  - DOCKER_CLI_EXPERIMENTAL=enabled
+  - CGO_ENABLED=0
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  # 1. Define the reusable build template
+  -  &go_build_defaults
+    env:
+    - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - ppc64le
+    ldflags:
+      - -w
+      - -s
+      - -extldflags '-static'
+    id: auth-service
+    main: ./cmd/auth-service
+    binary: auth-service
+  - id: edge-service
+    <<: *go_build_defaults
+    main: ./cmd/edge-service
+    binary: edge-service
+  # - id: search-service
+  #   <<: *go_build_defaults
+  #   main: ./cmd/search-service
+  #   binary: search-service
+  # - id: transfer-service
+  #   <<: *go_build_defaults
+  #   main: ./cmd/transfer-service
+  #   binary: transfer-service
+
+# archives:
+#   - formats: [tar.gz]
+#     format_overrides:
+#       - goos: windows
+#         formats: [zip]
+
+
+dockers_v2:
+  - id: ghcr-auth-service
+    ids:
+      - auth-service
+    dockerfile: ./infra/docker-release/dockerfile.auth.service
+    images:
+      - ghcr.io/axiler/auth-service
+      #- ghcr.io/axiler/auth-service:v{{.Version}}
+    labels:
+      # Global or reusable OCI build labels using YAML anchor
+      <<: &common_labels
+        org.opencontainers.image.created: "{{ .Date }}"
+        org.opencontainers.image.url: "{{ .GitURL }}"
+        org.opencontainers.image.source: "{{ .GitURL }}"
+        org.opencontainers.image.version: "{{ .Version }}"
+        org.opencontainers.image.revision: "{{ .FullCommit }}"
+        org.opencontainers.image.licenses: "Apache-2.0"
+        org.opencontainers.image.authors: "Md. Asraful Haque"
+
+      org.opencontainers.image.title: "auth-service"
+      org.opencontainers.image.description: "Authentication service for Axiler-Fin."
+  
+  - id: ghcr-edge-service
+    ids:
+      - edge-service
+    dockerfile: ./infra/docker-release/dockerfile.edge.service
+    images:
+      - ghcr.io/axiler/edge-service
+    labels:
+      # Global or reusable OCI build labels using YAML anchor
+      <<: *common_labels
+      org.opencontainers.image.title: "edge-service"
+      org.opencontainers.image.description: "Edge service for Axiler-Fin."    
+
+changelog:
+  sort: asc
+  use: github

@@ -8,7 +8,7 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/crypto v0.54.0 // indirect
-	golang.org/x/time v0.12.0
+	golang.org/x/time v0.12.0 // indirect
 )
 
 require github.com/hashicorp/vault/api v1.23.0
