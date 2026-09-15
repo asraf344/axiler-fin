@@ -8,6 +8,8 @@ release:
   # If set to true, will not auto-publish the release. This is done to allow us to review the changelog before publishing.
   draft: false
 
+  mode: replace
+
 project_name: axiler-fin
 
 
@@ -42,21 +44,16 @@ builds:
     <<: *go_build_defaults
     main: ./cmd/edge-service
     binary: edge-service
-  # - id: search-service
-  #   <<: *go_build_defaults
-  #   main: ./cmd/search-service
-  #   binary: search-service
-  # - id: transfer-service
-  #   <<: *go_build_defaults
-  #   main: ./cmd/transfer-service
-  #   binary: transfer-service
+  - id: search-service
+    <<: *go_build_defaults
+    main: ./cmd/search-service
+    binary: search-service
+  - id: transfer-service
+    <<: *go_build_defaults
+    main: ./cmd/transfer-service
+    binary: transfer-service
 
-# archives:
-#   - formats: [tar.gz]
-#     format_overrides:
-#       - goos: windows
-#         formats: [zip]
-
+archives: []
 
 dockers_v2:
   - id: ghcr-auth-service
@@ -97,7 +94,35 @@ dockers_v2:
       # Global or reusable OCI build labels using YAML anchor
       <<: *common_labels
       org.opencontainers.image.title: "edge-service"
-      org.opencontainers.image.description: "Edge service for Axiler-Fin."    
+      org.opencontainers.image.description: "Edge service for Axiler-Fin."  
+
+  - id: ghcr-search-service
+    ids:
+      - search-service
+    dockerfile: ./infra/docker-release/dockerfile.search.service
+    tags: *image_tags
+
+    images:
+      - ghcr.io/asraf344/axiler/search-service
+    labels:
+      # Global or reusable OCI build labels using YAML anchor
+      <<: *common_labels
+      org.opencontainers.image.title: "search-service"
+      org.opencontainers.image.description: "Search service for Axiler-Fin."
+
+  - id: ghcr-transfer-service
+    ids:
+      - transfer-service
+    dockerfile: ./infra/docker-release/dockerfile.transfer.service
+    tags: *image_tags
+
+    images:
+      - ghcr.io/asraf344/axiler/transfer-service
+    labels:
+      # Global or reusable OCI build labels using YAML anchor
+      <<: *common_labels
+      org.opencontainers.image.title: "transfer-service"
+      org.opencontainers.image.description: "Transfer service for Axiler-Fin."              
 
 changelog:
   sort: asc
