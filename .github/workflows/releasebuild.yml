@@ -37,6 +37,10 @@ jobs:
           registry: ghcr.io
           username: asraf344
           password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.0
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -63,7 +67,13 @@ jobs:
         run: |
           echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           echo "full_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"  
-
+      
+      - name: Sign the images with GitHub OIDC Token
+        env:
+          IMAGE: ghcr.io/asraf344/axiler/${{ matrix.image }}:${{ steps.commit.outputs.short_sha }}
+        run: |
+          cosign sign --yes "${IMAGE}"  
+                    
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
         with:

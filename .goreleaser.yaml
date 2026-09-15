@@ -51,12 +51,7 @@ builds:
   #   main: ./cmd/transfer-service
   #   binary: transfer-service
 
-# archives:
-#   - formats: [tar.gz]
-#     format_overrides:
-#       - goos: windows
-#         formats: [zip]
-
+archives: []
 
 dockers_v2:
   - id: ghcr-auth-service
