@@ -36,7 +36,7 @@ func init() {
 	})
 	log.SetLevel(logrus.DebugLevel)
 
-	metricsReg := prometheus.NewRegistry()
+	metricsReg = prometheus.NewRegistry()
 	appMetrics = metrics.New(metricsReg)
 
 	var err error

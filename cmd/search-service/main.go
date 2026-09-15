@@ -33,7 +33,7 @@ func init() {
 	})
 	log.SetLevel(logrus.DebugLevel)
 
-	metricsReg := prometheus.NewRegistry()
+	metricsReg = prometheus.NewRegistry()
 	appMetrics = metrics.New(metricsReg)
 
 	// Initialize token manager (same keys as auth service in production)

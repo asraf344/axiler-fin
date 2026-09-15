@@ -38,7 +38,7 @@ func init() {
 	log.SetLevel(logrus.DebugLevel)
 
 	// Initialize metrics registry
-	metricsReg := prometheus.NewRegistry()
+	metricsReg = prometheus.NewRegistry()
 	appMetrics = metrics.New(metricsReg)
 
 	// Initialize token manager (in production, load keys from secure storage)

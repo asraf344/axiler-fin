@@ -347,6 +347,7 @@ swarm-test-failover:
 
 # =============================================================================
 # Cleanup
+## docker swarm leave --force; \
 # =============================================================================
 
 swarm-clean:
@@ -358,8 +359,6 @@ swarm-clean:
 		docker stack rm $(STACK_NAME); \
 		echo "Waiting for services to terminate..."; \
 		sleep 10; \
-		echo "Leaving Swarm..."; \
-		docker swarm leave --force; \
 		echo "$(GREEN)✓ Swarm cleanup complete$(NC)"; \
 	fi
 
