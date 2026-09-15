@@ -15,7 +15,7 @@ services:
     cap_add:
       - IPC_LOCK
     healthcheck:
-      test: ["CMD", "vault", "status"]
+      test: ["CMD-SHELL", "VAULT_ADDR=http://127.0.0.1:8200 vault status"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -284,11 +284,6 @@ services:
   auth:
     #image: ${REGISTRY:-axiler-fin}/auth:${AUTH_VERSION:-latest}@${AUTH_DIGEST:-sha256:latest}
     image: ${REGISTRY:-axiler-fin}/auth:${AUTH_VERSION:-latest}
-    ports:
-      - target: 8081
-        published: 8081
-        protocol: tcp
-        mode: host
     environment:
       - PORT=8081
       - LOG_LEVEL=info
@@ -336,11 +331,6 @@ services:
   # Search Service
   search:
     image: ${REGISTRY:-axiler-fin}/search:${SEARCH_VERSION:-latest}
-    ports:
-      - target: 8082
-        published: 8082
-        protocol: tcp
-        mode: host
     environment:
       - PORT=8082
       - LOG_LEVEL=info
@@ -388,11 +378,6 @@ services:
   # Transfer Service - 3 replicas with strict resource constraints
   transfer:
     image: ${REGISTRY:-axiler-fin}/transfer:${TRANSFER_VERSION:-latest}
-    ports:
-      - target: 8083
-        published: 8083
-        protocol: tcp
-        mode: host
     environment:
       - PORT=8083
       - LOG_LEVEL=info
