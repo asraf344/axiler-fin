@@ -1,0 +1,18 @@
+
+# Get the minimum base
+FROM alpine:3.22 
+
+# for goreleaser docker_v2 these are passed
+ARG TARGETOS
+ARG TARGETARCH
+
+# This binary is coming from goreleaser
+# GoReleaser builds the binary first and then injects it into the Docker build context when it runs docker build.
+COPY ${TARGETOS}/${TARGETARCH}/transfer-service /usr/local/bin/transfer-service
+RUN chmod +x /usr/local/bin/transfer-service
+
+# Provide a non-root user (distroless provides user 65532)
+USER 65532:65532
+
+
+ENTRYPOINT ["/usr/local/bin/transfer-service"]
