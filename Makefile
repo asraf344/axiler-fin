@@ -395,6 +395,32 @@ swarm-test-failover:
 		fi; \
 	fi
 
+
+test-failure:
+	@echo "Injecting failure into transfer service..."
+	@curl -s -X POST http://localhost:8083/admin/simulate-failure | jq .
+	@echo ""
+	@echo "Transfer service health check should now fail."
+	@echo "Check logs: docker logs fintech-transfer"
+	@echo ""
+	@echo "To verify automatic rollback in Swarm:"
+	@echo "  docker service update --image registry/transfer:sha256:new transfer"
+	@echo "  watch 'docker service ps transfer'"
+ 
+test-rollback:
+	@echo "Demonstrating rollback mechanism..."
+	@echo ""
+	@echo "Current transfer service status:"
+	@curl -s http://localhost:8083/health | jq .status
+	@echo ""
+	@echo "To trigger rollback:"
+	@echo "  1. Inject failure: make test-failure"
+	@echo "  2. Wait 30 seconds for health checks to fail"
+	@echo "  3. Docker Swarm automatically reverts to previous image digest"
+	@echo ""
+	@echo "Manual rollback:"
+	@echo "  docker service rollback fintech_transfer"
+
 # =============================================================================
 # Cleanup
 ## docker swarm leave --force; \
