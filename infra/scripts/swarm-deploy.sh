@@ -10,7 +10,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 STACK_NAME="fintech"
-COMPOSE_FILE="docker-swarm-stack.yml"
+COMPOSE_FILE="infra/docker/docker-swarm-stack.yml"
 ENV_FILE="${1:-.env.swarm}"
 
 echo -e "${YELLOW}=== Fintech Platform - Swarm Deployment ===${NC}"
