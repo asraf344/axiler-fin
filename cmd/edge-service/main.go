@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asraf344/axiler-fin/pkg/auth"
 	"github.com/asraf344/axiler-fin/pkg/metrics"
 	"github.com/asraf344/axiler-fin/pkg/ratelimit"
 	"github.com/go-chi/chi/v5"
@@ -26,6 +27,7 @@ var (
 	metricsReg    *prometheus.Registry
 	appMetrics    *metrics.Metrics
 	limiter       *ratelimit.TenantLimiter
+	tokenManager  *auth.TokenManager
 	secretPattern *regexp.Regexp
 	backends      map[string]string
 )
@@ -40,6 +42,16 @@ func init() {
 	metricsReg = prometheus.NewRegistry()
 	appMetrics = metrics.New(metricsReg)
 	limiter = ratelimit.New()
+
+	var err error
+	tokenManager, err = auth.New(
+		auth.GetRSAPrivateKeyPEM(),
+		auth.GetRSAPublicKeyPEM(),
+		log,
+	)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to initialize token manager")
+	}
 
 	// Regex to detect potential secrets in request bodies
 	secretPattern = regexp.MustCompile(`(password|secret|token|api_key|aws_secret)\s*[:=]\s*["']?([a-zA-Z0-9\-._~+/]+=*)["']?`)
@@ -113,8 +125,8 @@ func securityMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// 2. EXTRACT TENANT FROM CREDENTIALS
-		// For login endpoint, extract from body
-		// For protected endpoints, we'll get it from the backend response
+		// Login derives the tenant from the API key. Protected endpoints derive
+		// it from the validated bearer token before rate limiting.
 		var tenantID string
 		if strings.Contains(r.RequestURI, "/auth/login") {
 			var loginReq map[string]interface{}
@@ -123,6 +135,22 @@ func securityMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if apiKey, ok := loginReq["api_key"].(string); ok {
 				tenantID = extractTenantFromKey(apiKey)
 			}
+		} else {
+			authHeader := r.Header.Get("Authorization")
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || parts[0] != "Bearer" {
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "invalid token format"})
+				return
+			}
+
+			claims, err := tokenManager.ValidateToken(parts[1])
+			if err != nil || claims.TenantID == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
+				return
+			}
+			tenantID = claims.TenantID
 		}
 
 		if tenantID == "" {
