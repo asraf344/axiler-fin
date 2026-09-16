@@ -127,9 +127,10 @@ services:
 
   # Kibana for log visualization
   kibana:
-    image: kibana:9.5.3
+    image: docker.elastic.co/kibana/kibana:8.10.4
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY='HNK0mh1GAfldBLdiltSIawsM3nkbzFyI+ASEtBaZG60='
     ports:
       - target: 5601
         published: 5601
@@ -156,7 +157,40 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+  
+  # Filebeat - Docker/Swarm log collector
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.10.0
+    user: root
+    command:
+      - filebeat
+      - -e
+      - --strict.perms=false
 
+    volumes:
+      # Docker container logs
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # Docker metadata
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Filebeat configuration
+      - ./infra/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      # Persistent Filebeat registry
+      - filebeat_data:/usr/share/filebeat/data
+
+    networks:
+      - axiler-fin-overlay
+    deploy:
+      mode: global
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+  
   # Jaeger for distributed tracing
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -463,3 +497,5 @@ volumes:
     driver: local
   grafana_data:
     driver: local
+  filebeat_data:
+    driver: local  
