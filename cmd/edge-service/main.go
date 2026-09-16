@@ -30,6 +30,7 @@ var (
 	tokenManager  *auth.TokenManager
 	secretPattern *regexp.Regexp
 	backends      map[string]string
+	abuseDetector *AbuseDetector
 )
 
 func init() {
@@ -62,6 +63,8 @@ func init() {
 		"/api/v1/search":   "http://search:8082",
 		"/api/v1/transfer": "http://transfer:8083",
 	}
+
+	abuseDetector = NewAbuseDetector(log)
 }
 
 func main() {
@@ -175,7 +178,8 @@ func securityMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// 4. ABUSE DETECTION: Check for suspicious patterns
-		if detectAbuse(r, tenantID) {
+		signal := abuseDetector.Detect(r, tenantID)
+		if signal.Detected {
 			appMetrics.EdgeSuspicious.WithLabelValues("abuse_pattern").Inc()
 			log.WithFields(logrus.Fields{
 				"tenant_id": tenantID,
@@ -183,7 +187,7 @@ func securityMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				"remote_ip": r.RemoteAddr,
 			}).Warn("Suspicious activity detected")
 			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(map[string]string{"error": "suspicious activity detected"})
+			json.NewEncoder(w).Encode(map[string]string{"error": signal.Reason})
 			return
 		}
 
@@ -281,16 +285,6 @@ func handleRateLimitStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(limiter.GetStatus(tenant))
-}
-
-// detectAbuse checks for suspicious patterns
-func detectAbuse(r *http.Request, tenantID string) bool {
-	// Example: check for scanning patterns, excessive error rates, etc.
-	// In production, integrate with a proper DLP/WAF system
-
-	// Simple example: multiple failed auth attempts
-	// (In production, use a proper tracking system)
-	return false
 }
 
 // extractTenantFromKey extracts tenant ID from API key

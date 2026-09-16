@@ -413,6 +413,14 @@ curl http://localhost:8083/health  # transfer service
 # If "Down", check service logs and health endpoints
 ```
 
+# Improvements to be done
+
+- Backends configuration at the edge should be moved to a config rather than at go code
+- More Efficien Abuse detection
+- Account transfer only shows successful message but it doesn't reflect at search/get, as transfer and search are two different services and DB is in memory.
+- Didn't get time for Writing unit tests
+- Use keyless approach for cosign, not that much convenient at CI/CD as it waits for github OIDC login
+
 ## Security Notes
 
 ### What's Production-Ready
@@ -424,6 +432,7 @@ curl http://localhost:8083/health  # transfer service
 
 ### What's Simplified for Demo
 - RSA keys are hardcoded (use Vault in production)
+- Tenant api keys are hardcoded shoul
 - Database credentials in environment (use Vault + mTLS in production)
 - In-memory database (use PostgreSQL with row-level security)
 - mTLS is not enforced locally (enable in production)
